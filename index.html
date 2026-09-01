@@ -67,6 +67,9 @@
     background:linear-gradient(rgba(20,18,16,.92),rgba(20,18,16,.8));
     backdrop-filter:blur(8px); border-bottom:1px solid var(--line);
   }
+  @media (max-width:720px), (pointer:coarse){
+    .gantry{ backdrop-filter:none; background:rgba(20,18,16,.96); }
+  }
   .gantry-inner{
     max-width:1180px; margin:0 auto; padding:1rem 1.5rem;
     display:flex; align-items:center; justify-content:space-between; gap:1.5rem;
@@ -197,6 +200,7 @@
   }
   .van-3d-mount{ width:100%; line-height:0; position:relative; z-index:1; }
   .van-3d-mount canvas{ width:100%; height:auto; display:block; }
+  .van-3d-mount img{ width:78%; height:auto; display:block; margin:0 auto; border-radius:50%; box-shadow:0 4px 14px rgba(0,0,0,.5); }
   .van-svg{ width:100%; display:block; }
 
   /* ---------- driver ---------- */
@@ -580,7 +584,8 @@
 </a>
 
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js';
+var isMobileDevice = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
+var THREE = isMobileDevice ? null : await import('https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js');
 
 function buildVanGroup(brassColor){
   var mat = {
@@ -750,7 +755,17 @@ function createVanScene(mount, brassColor){
 
   function initRoute(opts){
     var track = opts.track, svg = opts.svg, ghost = opts.ghost, line = opts.line, van = opts.van;
-    var vanScene = createVanScene(van.querySelector('.van-3d-mount'), opts.brass || 0xc69a56);
+    var mount = van.querySelector('.van-3d-mount');
+    var vanScene = null;
+    if (isMobileDevice) {
+      var img = document.createElement('img');
+      img.src = 'images/img-8-ffc5be8676.jpg';
+      img.alt = '';
+      img.loading = 'lazy';
+      mount.appendChild(img);
+    } else {
+      vanScene = createVanScene(mount, opts.brass || 0xc69a56);
+    }
     var nodeSelector = opts.nodeSelector || '.node';
     var refYFactor = opts.refYFactor || 0.55;
     var easeAmt = opts.ease || 0.045;
@@ -823,23 +838,25 @@ function createVanScene(mount, brassColor){
       van.style.transform = 'translate(' + pt.x.toFixed(1) + 'px,' + pt.y.toFixed(1) + 'px) translate(-50%,-50%)';
       van.style.opacity = (p <= 0.01 || p >= 0.995) ? 0 : 1;
 
-      var targetIdx = nodePts.length - 1;
-      for (var k = 0; k < nodeFracs.length; k++){
-        if (p < nodeFracs[k] - 0.01) { targetIdx = k; break; }
-      }
-      var target = nodePts[targetIdx];
-      var ddx = target.x - pt.x, ddy = target.y - pt.y;
-      if (ddx*ddx + ddy*ddy > 4) {
-        var targetAngle = Math.atan2(-ddy, ddx);
-        var diff = targetAngle - shownAngle;
-        while (diff > Math.PI) diff -= Math.PI * 2;
-        while (diff < -Math.PI) diff += Math.PI * 2;
-        shownAngle += diff * 0.09;
-      }
-      if (Math.abs(shownAngle - vanScene.van.rotation.y) > 0.0008 || p !== vanScene.lastP) {
-        vanScene.van.rotation.y = shownAngle;
-        vanScene.renderer.render(vanScene.scene, vanScene.camera);
-        vanScene.lastP = p;
+      if (vanScene) {
+        var targetIdx = nodePts.length - 1;
+        for (var k = 0; k < nodeFracs.length; k++){
+          if (p < nodeFracs[k] - 0.01) { targetIdx = k; break; }
+        }
+        var target = nodePts[targetIdx];
+        var ddx = target.x - pt.x, ddy = target.y - pt.y;
+        if (ddx*ddx + ddy*ddy > 4) {
+          var targetAngle = Math.atan2(-ddy, ddx);
+          var diff = targetAngle - shownAngle;
+          while (diff > Math.PI) diff -= Math.PI * 2;
+          while (diff < -Math.PI) diff += Math.PI * 2;
+          shownAngle += diff * 0.09;
+        }
+        if (Math.abs(shownAngle - vanScene.van.rotation.y) > 0.0008 || p !== vanScene.lastP) {
+          vanScene.van.rotation.y = shownAngle;
+          vanScene.renderer.render(vanScene.scene, vanScene.camera);
+          vanScene.lastP = p;
+        }
       }
 
       panels.forEach(function(panel, i){
