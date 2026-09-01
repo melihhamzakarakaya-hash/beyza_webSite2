@@ -582,18 +582,30 @@
 <script type="module">
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js';
 
-function buildVanGroup(brassColor){
+function buildVanGroup(brassColor, cheap){
+  var Mat = cheap ? THREE.MeshLambertMaterial : THREE.MeshStandardMaterial;
   var mat = {
-    paint:  new THREE.MeshStandardMaterial({ color:0x35373f, roughness:0.20, metalness:0.35 }),
-    trim:   new THREE.MeshStandardMaterial({ color:0x24262c, roughness:0.55, metalness:0.15 }),
-    brass:  new THREE.MeshStandardMaterial({ color:brassColor, roughness:0.35, metalness:0.55 }),
-    glass:  new THREE.MeshStandardMaterial({ color:0x0d111e, roughness:0.06, metalness:0.30 }),
-    chrome: new THREE.MeshStandardMaterial({ color:0xc9cdd7, roughness:0.16, metalness:0.40 }),
-    rubber: new THREE.MeshStandardMaterial({ color:0x181a1e, roughness:0.94, metalness:0.0 }),
-    lamp:   new THREE.MeshStandardMaterial({ color:0xf2ecd9, roughness:0.12, metalness:0.10, emissive:0x554b33, emissiveIntensity:0.6 }),
-    lampR:  new THREE.MeshStandardMaterial({ color:0x7a1f22, roughness:0.20, metalness:0.10, emissive:0x2a0a0b, emissiveIntensity:0.6 }),
-    amber:  new THREE.MeshStandardMaterial({ color:0xb8762a, roughness:0.25, metalness:0.10 }),
+    paint:  new Mat({ color:0x35373f }),
+    trim:   new Mat({ color:0x24262c }),
+    brass:  new Mat({ color:brassColor }),
+    glass:  new Mat({ color:0x0d111e }),
+    chrome: new Mat({ color:0xc9cdd7 }),
+    rubber: new Mat({ color:0x181a1e }),
+    lamp:   new Mat({ color:0xf2ecd9, emissive:0x554b33, emissiveIntensity:0.6 }),
+    lampR:  new Mat({ color:0x7a1f22, emissive:0x2a0a0b, emissiveIntensity:0.6 }),
+    amber:  new Mat({ color:0xb8762a }),
   };
+  if (!cheap) {
+    mat.paint.roughness=0.20; mat.paint.metalness=0.35;
+    mat.trim.roughness=0.55; mat.trim.metalness=0.15;
+    mat.brass.roughness=0.35; mat.brass.metalness=0.55;
+    mat.glass.roughness=0.06; mat.glass.metalness=0.30;
+    mat.chrome.roughness=0.16; mat.chrome.metalness=0.40;
+    mat.rubber.roughness=0.94; mat.rubber.metalness=0.0;
+    mat.lamp.roughness=0.12; mat.lamp.metalness=0.10;
+    mat.lampR.roughness=0.20; mat.lampR.metalness=0.10;
+    mat.amber.roughness=0.25; mat.amber.metalness=0.10;
+  }
   var van = new THREE.Group();
   function add(geo, material, pos, rot){
     var m = new THREE.Mesh(geo, material);
@@ -725,14 +737,16 @@ function createVanScene(mount, brassColor){
   var key = new THREE.DirectionalLight(0xfff2da, 3.4);
   key.position.set(3, 6, 4);
   scene.add(key);
-  var fill = new THREE.DirectionalLight(0xbfd8ea, 1.3);
-  fill.position.set(-4, 2, -3);
-  scene.add(fill);
-  var rim = new THREE.DirectionalLight(0xffffff, 1.8);
-  rim.position.set(-1, 3, -6);
-  scene.add(rim);
+  if (!isMobile) {
+    var fill = new THREE.DirectionalLight(0xbfd8ea, 1.3);
+    fill.position.set(-4, 2, -3);
+    scene.add(fill);
+    var rim = new THREE.DirectionalLight(0xffffff, 1.8);
+    rim.position.set(-1, 3, -6);
+    scene.add(rim);
+  }
 
-  var van = buildVanGroup(brassColor);
+  var van = buildVanGroup(brassColor, isMobile);
   scene.add(van);
 
   var box3 = new THREE.Box3().setFromObject(van);
@@ -747,10 +761,12 @@ function createVanScene(mount, brassColor){
 
 (function(){
   var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var isMobileDevice = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 768;
 
   function initRoute(opts){
     var track = opts.track, svg = opts.svg, ghost = opts.ghost, line = opts.line, van = opts.van;
     var vanScene = createVanScene(van.querySelector('.van-3d-mount'), opts.brass || 0xc69a56);
+    var frameSkip = 0;
     var nodeSelector = opts.nodeSelector || '.node';
     var refYFactor = opts.refYFactor || 0.55;
     var easeAmt = opts.ease || 0.045;
@@ -836,7 +852,8 @@ function createVanScene(mount, brassColor){
         while (diff < -Math.PI) diff += Math.PI * 2;
         shownAngle += diff * 0.09;
       }
-      if (Math.abs(shownAngle - vanScene.van.rotation.y) > 0.0008 || p !== vanScene.lastP) {
+      var dueFrame = !isMobileDevice || (frameSkip++ % 2 === 0);
+      if (dueFrame && (Math.abs(shownAngle - vanScene.van.rotation.y) > 0.0008 || p !== vanScene.lastP)) {
         vanScene.van.rotation.y = shownAngle;
         vanScene.renderer.render(vanScene.scene, vanScene.camera);
         vanScene.lastP = p;
