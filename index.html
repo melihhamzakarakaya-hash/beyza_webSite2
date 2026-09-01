@@ -820,9 +820,7 @@ function createVanScene(mount, brassColor){
       var len = totalLen * p;
       var pt = line.getPointAtLength(len);
 
-      van.style.left = pt.x + 'px';
-      van.style.top = pt.y + 'px';
-      van.style.transform = 'translate(-50%,-50%)';
+      van.style.transform = 'translate(' + pt.x.toFixed(1) + 'px,' + pt.y.toFixed(1) + 'px) translate(-50%,-50%)';
       van.style.opacity = (p <= 0.01 || p >= 0.995) ? 0 : 1;
 
       var targetIdx = nodePts.length - 1;
@@ -838,8 +836,11 @@ function createVanScene(mount, brassColor){
         while (diff < -Math.PI) diff += Math.PI * 2;
         shownAngle += diff * 0.09;
       }
-      vanScene.van.rotation.y = shownAngle;
-      vanScene.renderer.render(vanScene.scene, vanScene.camera);
+      if (Math.abs(shownAngle - vanScene.van.rotation.y) > 0.0008 || p !== vanScene.lastP) {
+        vanScene.van.rotation.y = shownAngle;
+        vanScene.renderer.render(vanScene.scene, vanScene.camera);
+        vanScene.lastP = p;
+      }
 
       panels.forEach(function(panel, i){
         if (p >= nodeFracs[panelFracIdx[i]] - 0.035) panel.classList.add('active');
