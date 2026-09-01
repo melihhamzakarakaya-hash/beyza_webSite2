@@ -756,7 +756,8 @@ function createVanScene(mount, brassColor){
     var easeAmt = opts.ease || 0.045;
     var panels = Array.prototype.slice.call(track.querySelectorAll('.stop-panel'));
 
-    var totalLen = 0, nodeFracs = [], nodePts = [], shown = 0, shownAngle = -Math.PI / 2;
+    var totalLen = 0, nodeFracs = [], nodePts = [], panelFracIdx = [], shown = 0, shownAngle = -Math.PI / 2;
+    var arcOffset = 20, arcInset = 0.18;
 
     function rebuild(){
       track.style.minHeight = '0px';
@@ -769,10 +770,25 @@ function createVanScene(mount, brassColor){
       svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
 
       var pts = [];
+      panelFracIdx = [];
       panels.forEach(function(panel){
-        var node = panel.querySelector(nodeSelector);
-        var r = node.getBoundingClientRect();
-        pts.push({ x: r.left + r.width/2 - trackRect.left, y: r.top + r.height/2 - trackRect.top });
+        var photo = panel.querySelector('.panel-photo');
+        var pr = photo.getBoundingClientRect();
+        var panelR = panel.getBoundingClientRect();
+        var outerLeft = (pr.left - panelR.left) <= (panelR.right - pr.right);
+        var ex = outerLeft ? (pr.left - arcOffset) : (pr.right + arcOffset);
+        var topY = pr.top + pr.height * arcInset;
+        var botY = pr.top + pr.height * (1 - arcInset);
+
+        panelFracIdx.push(pts.length);
+        pts.push({ x: ex - trackRect.left, y: topY - trackRect.top });
+        pts.push({ x: ex - trackRect.left, y: botY - trackRect.top });
+
+        var marker = panel.querySelector(nodeSelector);
+        if (marker) {
+          marker.style.left = (ex - panelR.left) + 'px';
+          marker.style.top = ((topY + botY) / 2 - panelR.top) + 'px';
+        }
       });
       nodePts = pts;
 
@@ -826,7 +842,7 @@ function createVanScene(mount, brassColor){
       vanScene.renderer.render(vanScene.scene, vanScene.camera);
 
       panels.forEach(function(panel, i){
-        if (p >= nodeFracs[i] - 0.035) panel.classList.add('active');
+        if (p >= nodeFracs[panelFracIdx[i]] - 0.035) panel.classList.add('active');
       });
     }
 
